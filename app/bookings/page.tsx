@@ -38,10 +38,10 @@ const BOOKINGS = [
   },
 ]
 
-const STATUS_CONFIG = {
-  confirmed: { label: 'Confirmada', variant: 'default' as const },
-  upcoming: { label: 'Próxima', variant: 'secondary' as const },
-  completed: { label: 'Completada', variant: 'outline' as const },
+const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
+  confirmed: { label: 'Confirmada', variant: 'default' },
+  upcoming: { label: 'Próxima', variant: 'secondary' },
+  completed: { label: 'Completada', variant: 'outline' },
 }
 
 export default function BookingsPage() {
