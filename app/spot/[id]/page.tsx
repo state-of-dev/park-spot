@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Navbar } from '@/components/layout/navbar'
-import { MapPin, Star, Shield, Car, Roof, Clock, ArrowLeft } from 'lucide-react'
+import { MapPin, Star, Shield, Car, Home, Clock, ArrowLeft } from 'lucide-react'
 
 export default function SpotDetailPage() {
   return (
@@ -71,7 +71,7 @@ export default function SpotDetailPage() {
                   <h3 className="mb-3 font-semibold text-white">Características</h3>
                   <div className="grid gap-3 sm:grid-cols-2">
                     {[
-                      { icon: Roof, label: 'Techado' },
+                      { icon: Home, label: 'Techado' },
                       { icon: Shield, label: 'Seguro 24/7' },
                       { icon: Car, label: 'Cabe SUV' },
                       { icon: Clock, label: 'Acceso inmediato' },
