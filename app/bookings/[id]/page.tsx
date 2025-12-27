@@ -156,9 +156,14 @@ export default function BookingDetailPage() {
               </CardContent>
             </Card>
 
-            <Button variant="destructive" className="w-full">
-              Cancelar Reserva
-            </Button>
+            <div className="space-y-3">
+              <Button className="w-full" size="lg">
+                Hacer Check-in
+              </Button>
+              <Button variant="destructive" className="w-full">
+                Cancelar Reserva
+              </Button>
+            </div>
           </div>
         </div>
       </div>
