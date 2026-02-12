@@ -1,23 +1,61 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Navbar } from '@/components/layout/navbar'
 import { DollarSign, Calendar, MapPin, Plus, TrendingUp } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
 
-const STATS = [
-  { label: 'Ingresos del mes', value: '$12,450', icon: DollarSign, trend: '+15%' },
-  { label: 'Reservas totales', value: '24', icon: Calendar, trend: '+8%' },
-  { label: 'Spots activos', value: '3', icon: MapPin, trend: '0%' },
-  { label: 'Tasa ocupación', value: '78%', icon: TrendingUp, trend: '+12%' },
-]
+export default async function HostDashboardPage() {
+  const supabase = await createClient()
 
-const RECENT_BOOKINGS = [
-  { id: '1', spot: 'Cajón Techado', date: '15 Ene 2025', time: '18:00 - 23:00', amount: 3000 },
-  { id: '2', spot: 'Espacio Amplio', date: '20 Ene 2025', time: '19:00 - 22:00', amount: 1800 },
-  { id: '3', spot: 'Cajón Techado', date: '25 Ene 2025', time: '17:00 - 23:00', amount: 3600 },
-]
+  // Check authentication
+  const { data: { user } } = await supabase.auth.getUser()
 
-export default function HostDashboardPage() {
+  if (!user) {
+    redirect('/auth/login')
+  }
+
+  // Get user profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  // Verify user is a host
+  if (!profile || profile.role !== 'host') {
+    redirect('/search')
+  }
+
+  // Get host's spots
+  const { data: spots } = await supabase
+    .from('spots')
+    .select('*')
+    .eq('host_id', user.id)
+
+  const activeSpots = spots?.filter(s => s.is_active) || []
+
+  // Get host's bookings
+  const { data: bookings } = await supabase
+    .from('bookings')
+    .select(`
+      *,
+      spot:spots(title),
+      driver:profiles!bookings_driver_id_fkey(full_name)
+    `)
+    .eq('host_id', user.id)
+    .order('start_time', { ascending: true })
+
+  const upcomingBookings = bookings?.filter(b =>
+    new Date(b.start_time) > new Date() &&
+    b.status !== 'cancelled'
+  ).slice(0, 5) || []
+
+  // Calculate stats
+  const totalBookings = bookings?.length || 0
+  const completedBookings = bookings?.filter(b => b.status === 'completed') || []
+  const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.price_base_cents || 0), 0)
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
@@ -38,20 +76,55 @@ export default function HostDashboardPage() {
 
         {/* Stats */}
         <div className="mb-8 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {STATS.map((stat) => (
-            <Card key={stat.label} className="border-zinc-800 bg-zinc-950">
-              <CardContent className="pt-6">
-                <div className="flex items-center justify-between">
-                  <stat.icon className="h-8 w-8 text-primary" />
-                  <span className="text-sm text-green-500">{stat.trend}</span>
+          <Card className="border-zinc-800 bg-zinc-950">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <DollarSign className="h-8 w-8 text-primary" />
+              </div>
+              <div className="mt-4">
+                <div className="text-2xl font-semibold text-white">
+                  ${(totalRevenue / 100).toFixed(2)}
                 </div>
-                <div className="mt-4">
-                  <div className="text-2xl font-semibold text-white">{stat.value}</div>
-                  <div className="mt-1 text-sm text-zinc-400">{stat.label}</div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                <div className="mt-1 text-sm text-zinc-400">Ingresos totales</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-zinc-800 bg-zinc-950">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <Calendar className="h-8 w-8 text-primary" />
+              </div>
+              <div className="mt-4">
+                <div className="text-2xl font-semibold text-white">{totalBookings}</div>
+                <div className="mt-1 text-sm text-zinc-400">Reservas totales</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-zinc-800 bg-zinc-950">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <MapPin className="h-8 w-8 text-primary" />
+              </div>
+              <div className="mt-4">
+                <div className="text-2xl font-semibold text-white">{activeSpots.length}</div>
+                <div className="mt-1 text-sm text-zinc-400">Spots activos</div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-zinc-800 bg-zinc-950">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <TrendingUp className="h-8 w-8 text-primary" />
+              </div>
+              <div className="mt-4">
+                <div className="text-2xl font-semibold text-white">{spots?.length || 0}</div>
+                <div className="mt-1 text-sm text-zinc-400">Total de spots</div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Quick Actions */}
@@ -96,27 +169,48 @@ export default function HostDashboardPage() {
             <CardTitle>Próximas Reservas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {RECENT_BOOKINGS.map((booking) => (
-                <div
-                  key={booking.id}
-                  className="flex items-center justify-between rounded-lg border border-zinc-800 p-4"
-                >
-                  <div>
-                    <div className="font-medium text-white">{booking.spot}</div>
-                    <div className="mt-1 text-sm text-zinc-400">
-                      {booking.date} • {booking.time}
+            {upcomingBookings.length === 0 ? (
+              <div className="py-8 text-center text-zinc-400">
+                <Calendar className="mx-auto mb-2 h-12 w-12 opacity-20" />
+                <p>No hay reservas próximas</p>
+                <p className="mt-1 text-sm">Las reservas aparecerán aquí cuando los drivers reserven tus spots</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {upcomingBookings.map((booking: any) => {
+                  const startDate = new Date(booking.start_time)
+                  const endDate = new Date(booking.end_time)
+                  return (
+                    <div
+                      key={booking.id}
+                      className="flex items-center justify-between rounded-lg border border-zinc-800 p-4"
+                    >
+                      <div>
+                        <div className="font-medium text-white">{booking.spot?.title || 'Spot'}</div>
+                        <div className="mt-1 text-sm text-zinc-400">
+                          {startDate.toLocaleDateString('es-MX')} • {startDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} - {endDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                        <div className="mt-1 text-xs text-zinc-500">
+                          {booking.driver?.full_name || 'Driver'} • Código: {booking.booking_code}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold text-white">${(booking.price_base_cents / 100).toFixed(2)}</div>
+                        <div className="mt-1 text-xs text-zinc-500">
+                          <span className={`inline-block rounded px-2 py-1 ${
+                            booking.status === 'confirmed' ? 'bg-green-500/10 text-green-500' :
+                            booking.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
+                            'bg-zinc-500/10 text-zinc-500'
+                          }`}>
+                            {booking.status}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-semibold text-white">${booking.amount}</div>
-                    <Button variant="ghost" size="sm" className="mt-1" asChild>
-                      <Link href={`/host/bookings/${booking.id}`}>Ver detalles</Link>
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  )
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -1,12 +1,30 @@
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Navbar } from '@/components/layout/navbar'
 import { MapPin, Star, Shield, Car, Home, Clock, ArrowLeft } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
 
-export default function SpotDetailPage() {
+export default async function SpotDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params
+  const supabase = await createClient()
+
+  // Get spot details
+  const { data: spot, error } = await supabase
+    .from('spots')
+    .select(`
+      *,
+      host:profiles!spots_host_id_fkey(full_name)
+    `)
+    .eq('id', id)
+    .single()
+
+  if (error || !spot) {
+    notFound()
+  }
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
@@ -25,74 +43,67 @@ export default function SpotDetailPage() {
           <div className="lg:col-span-2">
             {/* Images */}
             <div className="mb-6 grid gap-4 md:grid-cols-2">
-              <div
-                className="h-64 rounded-lg bg-zinc-800 bg-cover bg-center md:col-span-2"
-                style={{
-                  backgroundImage:
-                    'url(https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=800&h=400&fit=crop)',
-                }}
-              />
-              <div
-                className="h-32 rounded-lg bg-zinc-800 bg-cover bg-center"
-                style={{
-                  backgroundImage:
-                    'url(https://images.unsplash.com/photo-1590674899484-d5640e854abe?w=400&h=200&fit=crop)',
-                }}
-              />
-              <div
-                className="h-32 rounded-lg bg-zinc-800 bg-cover bg-center"
-                style={{
-                  backgroundImage:
-                    'url(https://images.unsplash.com/photo-1506521781263-d8422e82f27a?w=400&h=200&fit=crop)',
-                }}
-              />
+              {spot.photos && spot.photos.length > 0 ? (
+                <>
+                  <div
+                    className="h-64 rounded-lg bg-zinc-800 bg-cover bg-center md:col-span-2"
+                    style={{ backgroundImage: `url(${spot.photos[0]})` }}
+                  />
+                  {spot.photos[1] && (
+                    <div
+                      className="h-32 rounded-lg bg-zinc-800 bg-cover bg-center"
+                      style={{ backgroundImage: `url(${spot.photos[1]})` }}
+                    />
+                  )}
+                  {spot.photos[2] && (
+                    <div
+                      className="h-32 rounded-lg bg-zinc-800 bg-cover bg-center"
+                      style={{ backgroundImage: `url(${spot.photos[2]})` }}
+                    />
+                  )}
+                </>
+              ) : (
+                <div className="flex h-64 items-center justify-center rounded-lg bg-zinc-800 md:col-span-2">
+                  <MapPin className="h-16 w-16 text-zinc-600" />
+                </div>
+              )}
             </div>
 
             {/* Info */}
             <Card className="border-zinc-800 bg-zinc-950">
               <CardContent className="p-6">
                 <h1 className="text-3xl font-semibold text-white">
-                  Estacionamiento Techado - Foro Sol
+                  {spot.title}
                 </h1>
                 <div className="mt-2 flex items-center gap-4 text-sm text-zinc-400">
                   <div className="flex items-center">
                     <MapPin className="mr-1 h-4 w-4" />
-                    A 300m del Foro Sol
-                  </div>
-                  <div className="flex items-center">
-                    <Star className="mr-1 h-4 w-4 fill-yellow-500 text-yellow-500" />
-                    4.8 (24 reseñas)
+                    {spot.address_exact}
                   </div>
                 </div>
 
                 <Separator className="my-6 bg-zinc-800" />
 
-                <div>
-                  <h3 className="mb-3 font-semibold text-white">Características</h3>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {[
-                      { icon: Home, label: 'Techado' },
-                      { icon: Shield, label: 'Seguro 24/7' },
-                      { icon: Car, label: 'Cabe SUV' },
-                      { icon: Clock, label: 'Acceso inmediato' },
-                    ].map((feature) => (
-                      <div key={feature.label} className="flex items-center gap-2 text-zinc-300">
-                        <feature.icon className="h-5 w-5 text-primary" />
-                        {feature.label}
+                {spot.tags && spot.tags.length > 0 && (
+                  <>
+                    <div>
+                      <h3 className="mb-3 font-semibold text-white">Características</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {spot.tags.map((tag: string) => (
+                          <Badge key={tag} variant="secondary">
+                            {tag}
+                          </Badge>
+                        ))}
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                <Separator className="my-6 bg-zinc-800" />
+                    </div>
+                    <Separator className="my-6 bg-zinc-800" />
+                  </>
+                )}
 
                 <div>
                   <h3 className="mb-3 font-semibold text-white">Descripción</h3>
                   <p className="text-zinc-400">
-                    Estacionamiento techado y seguro a solo 5 minutos caminando del Foro Sol.
-                    Perfecto para conciertos y eventos. Cuenta con vigilancia las 24 horas y acceso
-                    controlado. Espacio amplio que puede acomodar vehículos grandes como SUVs y
-                    camionetas.
+                    {spot.description}
                   </p>
                 </div>
 
@@ -122,10 +133,10 @@ export default function SpotDetailPage() {
               <CardContent className="p-6">
                 <div className="mb-6">
                   <div className="text-3xl font-semibold text-white">
-                    $600
+                    ${(spot.price_per_hour / 100).toLocaleString()}
                     <span className="text-base font-normal text-zinc-400">/hora</span>
                   </div>
-                  <p className="mt-1 text-sm text-zinc-500">Mínimo 1 hora</p>
+                  <p className="mt-1 text-sm text-zinc-500">Mínimo 1 hora, máximo 8 horas</p>
                 </div>
 
                 <div className="space-y-4">

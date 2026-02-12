@@ -1,5 +1,5 @@
 // User & Profile Types
-export type UserRole = 'driver' | 'host' | 'admin'
+export type UserRole = 'driver' | 'host'
 
 export interface Profile {
   id: string
@@ -7,93 +7,108 @@ export interface Profile {
   full_name: string | null
   phone: string | null
   avatar_url: string | null
+
+  // Driver specific
+  vehicle_size: string | null
+  license_plate: string | null
+
+  // Host specific
   paypal_merchant_id: string | null
-  paypal_payer_id: string | null
   paypal_onboarding_complete: boolean
+  rfc: string | null
+  billing_email: string | null
+
+  // Preferences
   email_notifications: boolean
   sms_notifications: boolean
-  whatsapp_notifications: boolean
+
   created_at: string
   updated_at: string
 }
 
 // Subscription Types
 export type SubscriptionPlan = 'starter' | 'pro' | 'business'
-export type SubscriptionStatus = 'trialing' | 'active' | 'cancelled' | 'past_due' | 'expired'
+export type SubscriptionStatus = 'active' | 'cancelled' | 'expired'
 
 export interface Subscription {
   id: string
   host_id: string
   plan: SubscriptionPlan
   status: SubscriptionStatus
-  max_slots: number | null
-  max_addresses: number | null
   paypal_subscription_id: string | null
-  paypal_plan_id: string | null
   current_period_start: string | null
   current_period_end: string | null
   created_at: string
   updated_at: string
 }
 
-// Address Types
-export interface Address {
+// Spot Types
+export interface AvailabilitySchedule {
+  type: 'weekly' | 'custom'
+  // For weekly: { monday: { start: "09:00", end: "18:00" }, ... }
+  // For custom: array of specific dates
+  schedule: Record<string, any>
+}
+
+export interface Spot {
   id: string
   host_id: string
-  name: string
+  title: string
+  description: string
   address_exact: string
   lat_exact: number
   lng_exact: number
-  lat_approx: number
-  lng_approx: number
-  zone_description: string
-  venue_nearby: string
-  access_instructions: string
-  contact_phone: string
-  entry_code: string | null
+  lat_fuzzy: number
+  lng_fuzzy: number
+  price_per_hour: number // in cents
+  photos: string[]
+  tags: string[]
+  availability_schedule: AvailabilitySchedule
   is_active: boolean
   created_at: string
   updated_at: string
 }
 
-// Spot Types
-export interface Spot {
-  id: string
-  address_id: string
-  name: string
-  description: string
-  price_per_hour: number
-  features: string[]
-  photos: string[]
-  is_active: boolean
-  created_at: string
-  updated_at: string
+export interface SpotWithHost extends Spot {
+  host: Profile
 }
 
 // Booking Types
-export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled' | 'no_show'
+export type BookingStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'completed'
+  | 'cancelled'
+  | 'no_show'
+  | 'reschedule_pending'
+  | 'reschedule_rejected'
 
 export interface Booking {
   id: string
+  booking_code: string
   spot_id: string
   driver_id: string
   host_id: string
-  booking_code: string
-  start_datetime: string
-  end_datetime: string
+  start_time: string
+  end_time: string
   duration_hours: number
   price_base_cents: number
-  price_fee_cents: number
-  price_total_cents: number
+  platform_fee_cents: number
+  total_cents: number
   status: BookingStatus
-  check_in_at: string | null
-  cancelled_at: string | null
-  cancellation_reason: string | null
-  refund_amount_cents: number | null
-  policy_snapshot: Record<string, any>
-  spot_snapshot: Record<string, any>
+  reschedule_count: number
+  proposed_start_time: string | null
+  proposed_end_time: string | null
+  reschedule_reason: string | null
+  spot_snapshot: Partial<Spot>
   created_at: string
   updated_at: string
+}
+
+export interface BookingWithRelations extends Booking {
+  spot: Spot
+  driver: Profile
+  host: Profile
 }
 
 // Payment Types
@@ -104,55 +119,43 @@ export interface Payment {
   booking_id: string
   paypal_order_id: string | null
   paypal_capture_id: string | null
-  paypal_refund_id: string | null
   amount_cents: number
-  platform_fee_cents: number
-  host_amount_cents: number
-  refund_cents: number
   status: PaymentStatus
-  paypal_response: Record<string, any> | null
   created_at: string
   updated_at: string
 }
 
-// Notification Types
-export type NotificationChannel = 'email' | 'sms' | 'whatsapp'
-export type NotificationType =
-  | 'booking_confirmed'
-  | 'booking_reminder'
-  | 'booking_cancelled'
-  | 'host_new_booking'
-  | 'payment_received'
-  | 'subscription_active'
-
-export interface NotificationLog {
-  id: string
-  user_id: string | null
-  channel: NotificationChannel
-  type: NotificationType
-  recipient: string
-  content: string | null
-  provider: string
-  provider_id: string | null
-  status: string
-  error: string | null
-  created_at: string
+// Form Types
+export interface SignupFormData {
+  email: string
+  password: string
+  role: UserRole
+  full_name: string
+  phone: string
+  // Driver specific
+  vehicle_size?: string
+  license_plate?: string
+  // Host specific
+  rfc?: string
+  billing_email?: string
 }
 
-// Venue Types
-export interface Venue {
-  id: string
-  name: string
-  capacity: number
-  lat: number
-  lng: number
+export interface SpotFormData {
+  title: string
+  description: string
+  address_exact: string
+  lat_exact: number
+  lng_exact: number
+  price_per_hour: number
+  photos: File[]
+  tags: string[]
+  availability_schedule: AvailabilitySchedule
 }
 
-// Slot Types
-export interface TimeSlot {
-  date: string
-  time: string
-  duration: number
+export interface BookingFormData {
+  spot_id: string
+  start_time: string
+  duration_hours: number
 }
 
 // API Response Types
