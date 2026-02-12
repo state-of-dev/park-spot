@@ -167,6 +167,18 @@ export default function HostBookingsPage() {
     if (activeTab === 'in_progress') return b.status === 'confirmed' && start <= now && end > now
     if (activeTab === 'completed') return ['completed', 'cancelled', 'no_show'].includes(b.status)
     return true
+  }).sort((a, b) => {
+    // When showing "all", sort by priority: cancelled/no_show last
+    if (activeTab === 'all') {
+      const aCancelled = ['cancelled', 'no_show'].includes(a.status)
+      const bCancelled = ['cancelled', 'no_show'].includes(b.status)
+
+      if (aCancelled && !bCancelled) return 1 // a goes after b
+      if (!aCancelled && bCancelled) return -1 // a goes before b
+    }
+
+    // Otherwise maintain start_time order (already sorted from query)
+    return 0
   })
 
   const formatDateTime = (iso: string) => {

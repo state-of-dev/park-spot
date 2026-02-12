@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ParkingSquare, Menu, X, User, Calendar, Building2, LogOut } from 'lucide-react'
+import { ParkingSquare, Menu, X, User, Calendar, Building2, LogOut, LayoutDashboard, CalendarCheck } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -92,21 +92,43 @@ export function Navbar() {
                   </DropdownMenuItem>
 
                   {userRole === 'driver' && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/bookings" className="flex cursor-pointer items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        <span>Mis Reservas</span>
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href="/driver" className="flex cursor-pointer items-center gap-2">
+                          <LayoutDashboard className="h-4 w-4" />
+                          <span>Dashboard</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/bookings" className="flex cursor-pointer items-center gap-2">
+                          <Calendar className="h-4 w-4" />
+                          <span>Mis Reservas</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
 
                   {userRole === 'host' && (
-                    <DropdownMenuItem asChild>
-                      <Link href="/host/spots" className="flex cursor-pointer items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        <span>Mis Anuncios</span>
-                      </Link>
-                    </DropdownMenuItem>
+                    <>
+                      <DropdownMenuItem asChild>
+                        <Link href="/host" className="flex cursor-pointer items-center gap-2">
+                          <LayoutDashboard className="h-4 w-4" />
+                          <span>Dashboard</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/host/bookings" className="flex cursor-pointer items-center gap-2">
+                          <CalendarCheck className="h-4 w-4" />
+                          <span>Mis Reservas</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link href="/host/spots" className="flex cursor-pointer items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          <span>Mis Anuncios</span>
+                        </Link>
+                      </DropdownMenuItem>
+                    </>
                   )}
 
                   <DropdownMenuSeparator className="bg-zinc-800" />
@@ -190,24 +212,52 @@ export function Navbar() {
                 >
                   Mi Perfil
                 </Link>
+
                 {userRole === 'driver' && (
-                  <Link
-                    href="/bookings"
-                    className="block rounded-md px-3 py-2 text-base text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Mis Reservas
-                  </Link>
+                  <>
+                    <Link
+                      href="/driver"
+                      className="block rounded-md px-3 py-2 text-base text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/bookings"
+                      className="block rounded-md px-3 py-2 text-base text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Mis Reservas
+                    </Link>
+                  </>
                 )}
+
                 {userRole === 'host' && (
-                  <Link
-                    href="/host/spots"
-                    className="block rounded-md px-3 py-2 text-base text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Mis Anuncios
-                  </Link>
+                  <>
+                    <Link
+                      href="/host"
+                      className="block rounded-md px-3 py-2 text-base text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/host/bookings"
+                      className="block rounded-md px-3 py-2 text-base text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Mis Reservas
+                    </Link>
+                    <Link
+                      href="/host/spots"
+                      className="block rounded-md px-3 py-2 text-base text-zinc-400 hover:bg-zinc-800 hover:text-white"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Mis Anuncios
+                    </Link>
+                  </>
                 )}
+
                 <button
                   onClick={signOut}
                   className="w-full rounded-md px-3 py-2 text-left text-base text-red-400 hover:bg-zinc-800"

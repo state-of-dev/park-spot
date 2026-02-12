@@ -2,8 +2,9 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Navbar } from '@/components/layout/navbar'
-import { DollarSign, Calendar, MapPin, Plus, TrendingUp } from 'lucide-react'
+import { DollarSign, Calendar, MapPin, Plus, TrendingUp, AlertCircle, CheckCircle2, Clock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function HostDashboardPage() {
@@ -52,10 +53,20 @@ export default async function HostDashboardPage() {
     b.status !== 'cancelled'
   ).slice(0, 5) || []
 
+  const pendingBookings = bookings?.filter(b => b.status === 'pending') || []
+
   // Calculate stats
   const totalBookings = bookings?.length || 0
   const completedBookings = bookings?.filter(b => b.status === 'completed') || []
   const totalRevenue = completedBookings.reduce((sum, b) => sum + (b.price_base_cents || 0), 0)
+
+  // Current month stats
+  const now = new Date()
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const thisMonthBookings = bookings?.filter(b =>
+    new Date(b.start_time) >= firstDayOfMonth && b.status === 'completed'
+  ) || []
+  const thisMonthRevenue = thisMonthBookings.reduce((sum, b) => sum + (b.price_base_cents || 0), 0)
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
@@ -79,13 +90,39 @@ export default async function HostDashboardPage() {
           <Card className="border-zinc-800 bg-zinc-950">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
-                <DollarSign className="h-8 w-8 text-primary" />
+                <DollarSign className="h-8 w-8 text-green-500" />
+                <TrendingUp className="h-5 w-5 text-green-500" />
               </div>
               <div className="mt-4">
                 <div className="text-2xl font-semibold text-white">
                   ${(totalRevenue / 100).toFixed(2)}
                 </div>
                 <div className="mt-1 text-sm text-zinc-400">Ingresos totales</div>
+                <div className="mt-2 text-xs text-zinc-500">
+                  Este mes: ${(thisMonthRevenue / 100).toFixed(2)}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-zinc-800 bg-zinc-950">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <AlertCircle className="h-8 w-8 text-yellow-500" />
+                {pendingBookings.length > 0 && (
+                  <Badge className="bg-yellow-500/10 text-yellow-500">
+                    {pendingBookings.length}
+                  </Badge>
+                )}
+              </div>
+              <div className="mt-4">
+                <div className="text-2xl font-semibold text-white">{pendingBookings.length}</div>
+                <div className="mt-1 text-sm text-zinc-400">Pendientes de aprobar</div>
+                {pendingBookings.length > 0 && (
+                  <Button asChild variant="link" className="mt-2 h-auto p-0 text-xs text-yellow-500">
+                    <Link href="/host/bookings">Revisar ahora</Link>
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -98,6 +135,9 @@ export default async function HostDashboardPage() {
               <div className="mt-4">
                 <div className="text-2xl font-semibold text-white">{totalBookings}</div>
                 <div className="mt-1 text-sm text-zinc-400">Reservas totales</div>
+                <div className="mt-2 text-xs text-zinc-500">
+                  Completadas: {completedBookings.length}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -110,18 +150,9 @@ export default async function HostDashboardPage() {
               <div className="mt-4">
                 <div className="text-2xl font-semibold text-white">{activeSpots.length}</div>
                 <div className="mt-1 text-sm text-zinc-400">Spots activos</div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-zinc-800 bg-zinc-950">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <TrendingUp className="h-8 w-8 text-primary" />
-              </div>
-              <div className="mt-4">
-                <div className="text-2xl font-semibold text-white">{spots?.length || 0}</div>
-                <div className="mt-1 text-sm text-zinc-400">Total de spots</div>
+                <div className="mt-2 text-xs text-zinc-500">
+                  Total: {spots?.length || 0}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -180,33 +211,48 @@ export default async function HostDashboardPage() {
                 {upcomingBookings.map((booking: any) => {
                   const startDate = new Date(booking.start_time)
                   const endDate = new Date(booking.end_time)
+
+                  const statusConfig = {
+                    pending: { icon: AlertCircle, color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', label: 'Pendiente' },
+                    confirmed: { icon: CheckCircle2, color: 'bg-green-500/10 text-green-500 border-green-500/20', label: 'Confirmada' },
+                  }
+
+                  const status = statusConfig[booking.status as keyof typeof statusConfig] || {
+                    icon: Clock,
+                    color: 'bg-zinc-500/10 text-zinc-500 border-zinc-500/20',
+                    label: booking.status
+                  }
+                  const StatusIcon = status.icon
+
                   return (
-                    <div
+                    <Link
                       key={booking.id}
-                      className="flex items-center justify-between rounded-lg border border-zinc-800 p-4"
+                      href="/host/bookings"
+                      className="flex items-center justify-between rounded-lg border border-zinc-800 p-4 transition-colors hover:border-zinc-700 hover:bg-zinc-900/50"
                     >
-                      <div>
-                        <div className="font-medium text-white">{booking.spot?.title || 'Spot'}</div>
-                        <div className="mt-1 text-sm text-zinc-400">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold text-white">{booking.spot?.title || 'Spot'}</h4>
+                          <Badge className={`${status.color} border`}>
+                            <StatusIcon className="mr-1 h-3 w-3" />
+                            {status.label}
+                          </Badge>
+                        </div>
+                        <div className="mt-1 flex items-center gap-2 text-sm text-zinc-400">
+                          <Calendar className="h-3.5 w-3.5" />
                           {startDate.toLocaleDateString('es-MX')} • {startDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} - {endDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                         </div>
                         <div className="mt-1 text-xs text-zinc-500">
-                          {booking.driver?.full_name || 'Driver'} • Código: {booking.booking_code}
+                          {booking.driver?.full_name || 'Driver'} • #{booking.booking_code}
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold text-white">${(booking.price_base_cents / 100).toFixed(2)}</div>
+                        <div className="text-lg font-bold text-white">${(booking.price_base_cents / 100).toFixed(2)}</div>
                         <div className="mt-1 text-xs text-zinc-500">
-                          <span className={`inline-block rounded px-2 py-1 ${
-                            booking.status === 'confirmed' ? 'bg-green-500/10 text-green-500' :
-                            booking.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
-                            'bg-zinc-500/10 text-zinc-500'
-                          }`}>
-                            {booking.status}
-                          </span>
+                          {booking.duration_hours}h
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   )
                 })}
               </div>

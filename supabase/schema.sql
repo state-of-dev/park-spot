@@ -193,6 +193,11 @@ CREATE POLICY "Drivers can update own bookings"
   ON bookings FOR UPDATE
   USING (auth.uid() = driver_id);
 
+-- Hosts can update bookings for their spots (for accept/reject/reschedule)
+CREATE POLICY "Hosts can update bookings for their spots"
+  ON bookings FOR UPDATE
+  USING (auth.uid() = host_id);
+
 -- ============================================
 -- PAYMENTS TABLE
 -- ============================================

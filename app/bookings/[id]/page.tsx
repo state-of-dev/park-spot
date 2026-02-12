@@ -1,170 +1,167 @@
+import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Badge } from '@/components/ui/badge'
 import { Navbar } from '@/components/layout/navbar'
-import { ArrowLeft, MapPin, Calendar, Clock, Phone, Key, AlertCircle } from 'lucide-react'
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  MapPin,
+  Hash,
+  DollarSign,
+  CheckCircle2,
+  XCircle,
+  AlertCircle
+} from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
 
-export default function BookingDetailPage() {
+export default async function BookingDetailPage({
+  params
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+  const supabase = await createClient()
+
+  const {
+    data: { user }
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/auth/login')
+  }
+
+  const { data: booking, error } = await supabase
+    .from('bookings')
+    .select(
+      `
+      *,
+      spot:spots(id, title, address_exact, photos),
+      driver:profiles!bookings_driver_id_fkey(full_name, phone),
+      host:profiles!bookings_host_id_fkey(full_name, phone)
+    `
+    )
+    .eq('id', id)
+    .single()
+
+  if (error || !booking) {
+    notFound()
+  }
+
+  if (booking.driver_id !== user.id && booking.host_id !== user.id) {
+    redirect('/driver')
+  }
+
+  const isDriver = booking.driver_id === user.id
+  const startDate = new Date(booking.start_time)
+  const endDate = new Date(booking.end_time)
+
+  const statusConfig = {
+    pending: {
+      label: 'Pendiente',
+      icon: AlertCircle,
+      color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
+    },
+    confirmed: {
+      label: 'Confirmada',
+      icon: CheckCircle2,
+      color: 'bg-green-500/10 text-green-500 border-green-500/20'
+    },
+    completed: {
+      label: 'Completada',
+      icon: CheckCircle2,
+      color: 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+    },
+    cancelled: {
+      label: 'Cancelada',
+      icon: XCircle,
+      color: 'bg-red-500/10 text-red-500 border-red-500/20'
+    }
+  }
+
+  const status = statusConfig[booking.status as keyof typeof statusConfig] || statusConfig.pending
+  const StatusIcon = status.icon
+
   return (
     <div className="min-h-screen bg-black">
       <Navbar />
 
       <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <Link
-          href="/bookings"
+          href={isDriver ? '/driver' : '/host'}
           className="mb-6 inline-flex items-center text-sm text-zinc-400 hover:text-white"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Volver a mis reservas
+          Volver
         </Link>
 
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-3xl font-semibold text-white">Detalle de Reserva</h1>
-          <Badge>Confirmada</Badge>
+          <h1 className="text-3xl font-semibold text-white">Reserva</h1>
+          <Badge className={`${status.color} border px-3 py-1`}>
+            <StatusIcon className="mr-1 h-4 w-4" />
+            {status.label}
+          </Badge>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Info */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="border-zinc-800 bg-zinc-950">
-              <CardHeader>
-                <CardTitle>Información del Estacionamiento</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+        <div className="space-y-6">
+          <Card className="border-zinc-800 bg-zinc-950">
+            <CardHeader>
+              <CardTitle>{booking.spot?.title}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start text-sm text-zinc-400">
+                <MapPin className="mr-2 mt-0.5 h-4 w-4" />
+                {booking.spot?.address_exact}
+              </div>
+
+              <Separator className="bg-zinc-800" />
+
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <h3 className="mb-2 text-lg font-semibold text-white">
-                    Cajón Techado - Foro Sol
-                  </h3>
-                  <div className="space-y-2 text-sm text-zinc-400">
-                    <div className="flex items-center">
-                      <Calendar className="mr-2 h-4 w-4" />
-                      15 de Enero, 2025
-                    </div>
-                    <div className="flex items-center">
-                      <Clock className="mr-2 h-4 w-4" />
-                      18:00 - 23:00 (5 horas)
-                    </div>
+                  <div className="flex items-center text-sm text-zinc-400">
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Fecha
                   </div>
-                </div>
-
-                <Separator className="bg-zinc-800" />
-
-                <div>
-                  <h4 className="mb-2 font-medium text-white">Dirección Exacta</h4>
-                  <div className="flex items-start">
-                    <MapPin className="mr-2 mt-0.5 h-4 w-4 text-primary" />
-                    <span className="text-sm text-zinc-300">
-                      Calle Granjas México 123, Col. Granjas México, Iztacalco, CDMX
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="mb-2 font-medium text-white">Instrucciones de Acceso</h4>
-                  <p className="text-sm text-zinc-400">
-                    Al llegar, tocar el timbre. El portón se abre automáticamente. El espacio
-                    está a mano derecha, número 3. Por favor, estaciona alineado con las marcas.
+                  <p className="mt-1 font-medium text-white">
+                    {startDate.toLocaleDateString('es-MX')}
                   </p>
                 </div>
 
-                <div className="rounded-lg bg-blue-950/20 border border-blue-900/30 p-4">
-                  <div className="flex items-start gap-2">
-                    <Key className="mt-0.5 h-5 w-5 text-blue-400" />
-                    <div>
-                      <h4 className="font-medium text-blue-300">Código de Acceso</h4>
-                      <p className="mt-1 text-lg font-mono text-blue-100">*1234#</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Map */}
-            <Card className="border-zinc-800 bg-zinc-950">
-              <CardHeader>
-                <CardTitle>Ubicación</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64 rounded-lg bg-zinc-800">
-                  {/* Aquí iría el mapa de Google Maps */}
-                  <div className="flex h-full items-center justify-center text-zinc-500">
-                    Mapa con ubicación exacta
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            <Card className="border-zinc-800 bg-zinc-950">
-              <CardHeader>
-                <CardTitle>Contacto del Host</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
                 <div>
-                  <div className="text-sm text-zinc-400">Nombre</div>
-                  <div className="font-medium text-white">Juan Pérez</div>
+                  <div className="flex items-center text-sm text-zinc-400">
+                    <Clock className="mr-2 h-4 w-4" />
+                    Horario
+                  </div>
+                  <p className="mt-1 font-medium text-white">
+                    {startDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} - {endDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 </div>
+
                 <div>
-                  <div className="text-sm text-zinc-400">Teléfono</div>
-                  <div className="flex items-center font-medium text-white">
-                    <Phone className="mr-2 h-4 w-4" />
-                    55 1234 5678
+                  <div className="flex items-center text-sm text-zinc-400">
+                    <Hash className="mr-2 h-4 w-4" />
+                    Código
                   </div>
+                  <p className="mt-1 font-mono text-lg font-semibold text-white">
+                    {booking.booking_code}
+                  </p>
                 </div>
-                <Button variant="outline" className="w-full">
-                  Contactar
-                </Button>
-              </CardContent>
-            </Card>
 
-            <Card className="border-zinc-800 bg-zinc-950">
-              <CardHeader>
-                <CardTitle>Resumen de Pago</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between text-sm text-zinc-400">
-                  <span>$600 × 5 horas</span>
-                  <span>$3,000</span>
-                </div>
-                <div className="flex justify-between text-sm text-zinc-400">
-                  <span>Comisión servicio</span>
-                  <span>$150</span>
-                </div>
-                <Separator className="my-2 bg-zinc-800" />
-                <div className="flex justify-between font-semibold text-white">
-                  <span>Total pagado</span>
-                  <span>$3,150</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-yellow-900/30 bg-yellow-950/20">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="mt-0.5 h-5 w-5 text-yellow-400" />
-                  <div>
-                    <h4 className="font-medium text-yellow-300">Política de Cancelación</h4>
-                    <p className="mt-1 text-xs text-yellow-200/80">
-                      Reembolso del 40% si cancelas con más de 1 hora de anticipación.
-                    </p>
+                <div>
+                  <div className="flex items-center text-sm text-zinc-400">
+                    <DollarSign className="mr-2 h-4 w-4" />
+                    Total
                   </div>
+                  <p className="mt-1 text-lg font-semibold text-white">
+                    ${(booking.total_cents / 100).toFixed(2)}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
-
-            <div className="space-y-3">
-              <Button className="w-full" size="lg">
-                Hacer Check-in
-              </Button>
-              <Button variant="destructive" className="w-full">
-                Cancelar Reserva
-              </Button>
-            </div>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

@@ -1,8 +1,11 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Navbar } from '@/components/layout/navbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Calendar, MapPin, Clock } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Calendar, MapPin, Clock, Search, CheckCircle2, XCircle, AlertCircle, Hash } from 'lucide-react'
 
 export default async function DriverDashboardPage() {
   const supabase = await createClient()
@@ -47,9 +50,17 @@ export default async function DriverDashboardPage() {
       <Navbar />
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold text-white">Mis Reservas</h1>
-          <p className="mt-2 text-zinc-400">Gestiona tus estacionamientos reservados</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-semibold text-white">Mis Reservas</h1>
+            <p className="mt-2 text-zinc-400">Gestiona tus estacionamientos reservados</p>
+          </div>
+          <Button asChild>
+            <Link href="/search">
+              <Search className="mr-2 h-4 w-4" />
+              Buscar Spots
+            </Link>
+          </Button>
         </div>
 
         {/* Stats */}
@@ -100,45 +111,61 @@ export default async function DriverDashboardPage() {
                 {upcomingBookings.map((booking: any) => {
                   const startDate = new Date(booking.start_time)
                   const endDate = new Date(booking.end_time)
+
+                  const statusConfig = {
+                    pending: { icon: AlertCircle, color: 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20', label: 'Pendiente' },
+                    confirmed: { icon: CheckCircle2, color: 'bg-green-500/10 text-green-500 border-green-500/20', label: 'Confirmada' },
+                    completed: { icon: CheckCircle2, color: 'bg-blue-500/10 text-blue-500 border-blue-500/20', label: 'Completada' },
+                    cancelled: { icon: XCircle, color: 'bg-red-500/10 text-red-500 border-red-500/20', label: 'Cancelada' }
+                  }
+
+                  const status = statusConfig[booking.status as keyof typeof statusConfig] || statusConfig.pending
+                  const StatusIcon = status.icon
+
                   return (
-                    <div
+                    <Link
                       key={booking.id}
-                      className="flex items-start justify-between rounded-lg border border-zinc-800 p-4"
+                      href={`/bookings/${booking.id}`}
+                      className="flex items-start justify-between rounded-lg border border-zinc-800 p-4 transition-colors hover:border-zinc-700 hover:bg-zinc-900/50"
                     >
                       <div className="flex-1">
-                        <div className="font-medium text-white">
-                          {booking.spot?.title || 'Spot'}
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-white">
+                            {booking.spot?.title || 'Spot'}
+                          </h3>
+                          <Badge className={`${status.color} border`}>
+                            <StatusIcon className="mr-1 h-3 w-3" />
+                            {status.label}
+                          </Badge>
                         </div>
-                        <div className="mt-1 text-sm text-zinc-400">
+                        <div className="mt-1 flex items-center text-sm text-zinc-400">
+                          <MapPin className="mr-1 h-3 w-3" />
                           {booking.spot?.address_exact}
                         </div>
-                        <div className="mt-2 flex items-center gap-4 text-sm text-zinc-500">
-                          <span>
-                            📅 {startDate.toLocaleDateString('es-MX')}
+                        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-zinc-500">
+                          <span className="flex items-center">
+                            <Calendar className="mr-1.5 h-3.5 w-3.5" />
+                            {startDate.toLocaleDateString('es-MX')}
                           </span>
-                          <span>
-                            🕐 {startDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} - {endDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                          <span className="flex items-center">
+                            <Clock className="mr-1.5 h-3.5 w-3.5" />
+                            {startDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} - {endDate.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
                           </span>
-                          <span>
-                            🎫 {booking.booking_code}
+                          <span className="flex items-center font-mono text-xs">
+                            <Hash className="mr-1 h-3.5 w-3.5" />
+                            {booking.booking_code}
                           </span>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold text-white">
+                        <div className="text-xl font-bold text-white">
                           ${(booking.total_cents / 100).toFixed(2)}
                         </div>
-                        <div className="mt-2">
-                          <span className={`inline-block rounded px-2 py-1 text-xs ${
-                            booking.status === 'confirmed' ? 'bg-green-500/10 text-green-500' :
-                            booking.status === 'pending' ? 'bg-yellow-500/10 text-yellow-500' :
-                            'bg-zinc-500/10 text-zinc-500'
-                          }`}>
-                            {booking.status}
-                          </span>
+                        <div className="mt-1 text-xs text-zinc-500">
+                          {booking.duration_hours} {booking.duration_hours === 1 ? 'hora' : 'horas'}
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   )
                 })}
               </div>
@@ -157,22 +184,29 @@ export default async function DriverDashboardPage() {
                 {pastBookings.slice(0, 5).map((booking: any) => {
                   const startDate = new Date(booking.start_time)
                   return (
-                    <div
+                    <Link
                       key={booking.id}
-                      className="flex items-center justify-between border-b border-zinc-800 pb-3 last:border-0"
+                      href={`/bookings/${booking.id}`}
+                      className="flex items-center justify-between border-b border-zinc-800 pb-3 last:border-0 transition-colors hover:opacity-70"
                     >
                       <div>
                         <div className="text-sm font-medium text-white">
                           {booking.spot?.title || 'Spot'}
                         </div>
-                        <div className="text-xs text-zinc-500">
+                        <div className="mt-1 flex items-center gap-2 text-xs text-zinc-500">
+                          <Calendar className="h-3 w-3" />
                           {startDate.toLocaleDateString('es-MX')}
                         </div>
                       </div>
-                      <div className="text-sm text-zinc-400">
-                        ${(booking.total_cents / 100).toFixed(2)}
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-zinc-400">
+                          ${(booking.total_cents / 100).toFixed(2)}
+                        </div>
+                        <div className="mt-1 text-xs text-zinc-600">
+                          {booking.duration_hours}h
+                        </div>
                       </div>
-                    </div>
+                    </Link>
                   )
                 })}
               </div>
