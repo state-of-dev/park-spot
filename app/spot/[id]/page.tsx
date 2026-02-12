@@ -52,6 +52,33 @@ export default function SpotDetailPage({ params }: SpotDetailPageProps) {
     }
   }, [selectedDate, spot])
 
+  // Realtime subscription for bookings
+  useEffect(() => {
+    if (!spotId || !selectedDate || !spot) return
+
+    const channel = supabase
+      .channel(`spot-${spotId}-bookings-${selectedDate}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `spot_id=eq.${spotId}`
+        },
+        (payload) => {
+          console.log('Booking change detected:', payload)
+          // Reload slots when a booking changes
+          loadTimeSlots()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [spotId, selectedDate, spot])
+
   const loadSpotAndUser = async () => {
     if (!spotId) return
 
@@ -116,18 +143,23 @@ export default function SpotDetailPage({ params }: SpotDetailPageProps) {
       })
     }
 
-    const startOfDay = new Date(selectedDate)
-    startOfDay.setHours(0, 0, 0, 0)
-    const endOfDay = new Date(selectedDate)
-    endOfDay.setHours(23, 59, 59, 999)
+    const startOfDay = new Date(selectedDate + 'T00:00:00')
+    const endOfDay = new Date(selectedDate + 'T23:59:59')
 
-    const { data: existingBookings } = await supabase
+    console.log('Loading slots for:', selectedDate)
+    console.log('Query range:', startOfDay.toISOString(), 'to', endOfDay.toISOString())
+    console.log('Spot ID:', spot.id)
+
+    const { data: existingBookings, error: bookingsError } = await supabase
       .from('bookings')
-      .select('start_time, end_time')
+      .select('start_time, end_time, status, spot_id, driver_id')
       .eq('spot_id', spot.id)
       .gte('start_time', startOfDay.toISOString())
-      .lte('start_time', endOfDay.toISOString())
+      .lte('end_time', endOfDay.toISOString())
       .in('status', ['pending', 'confirmed'])
+
+    console.log('Existing bookings:', existingBookings)
+    console.log('Bookings error:', bookingsError)
 
     const bookedHours = new Set<number>()
     existingBookings?.forEach(booking => {
@@ -139,6 +171,8 @@ export default function SpotDetailPage({ params }: SpotDetailPageProps) {
         current.setHours(current.getHours() + 1)
       }
     })
+
+    console.log('Booked hours:', Array.from(bookedHours))
 
     setTimeSlots(slots.map(slot => ({
       ...slot,
@@ -219,7 +253,15 @@ export default function SpotDetailPage({ params }: SpotDetailPageProps) {
       if (bookingError) throw bookingError
 
       toast.success('¡Reserva creada!')
-      router.push(`/bookings/${bookingData.id}`)
+
+      // Reload slots to show as unavailable
+      await loadTimeSlots()
+      setSelectedSlots(new Set())
+
+      // Navigate after a short delay to show updated slots
+      setTimeout(() => {
+        router.push(`/bookings/${bookingData.id}`)
+      }, 500)
     } catch (error: any) {
       console.error('Error:', error)
       toast.error('Error al reservar')

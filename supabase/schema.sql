@@ -183,6 +183,11 @@ CREATE POLICY "Hosts can view bookings for their spots"
   ON bookings FOR SELECT
   USING (auth.uid() = host_id);
 
+-- Anyone can view bookings to check availability (limited fields)
+CREATE POLICY "Anyone can view bookings for availability"
+  ON bookings FOR SELECT
+  USING (true);
+
 -- Drivers can create bookings
 CREATE POLICY "Drivers can create bookings"
   ON bookings FOR INSERT

@@ -14,6 +14,7 @@ import {
 import { ParkingSquare, Menu, X, User, Calendar, Building2, LogOut, LayoutDashboard, CalendarCheck } from 'lucide-react'
 import { useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { BookingNotifications } from '@/components/notifications/BookingNotifications'
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -57,7 +58,7 @@ export function Navbar() {
           </div>
 
           {/* Desktop Auth Buttons or User Menu */}
-          <div className="hidden md:flex md:items-center md:gap-3">
+          <div className="hidden md:flex md:items-center md:gap-4">
             {!isAuthenticated ? (
               <>
                 <Button variant="ghost" asChild>
@@ -68,7 +69,9 @@ export function Navbar() {
                 </Button>
               </>
             ) : (
-              <DropdownMenu>
+              <>
+                <BookingNotifications />
+                <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 rounded-full bg-zinc-900 px-3 py-2 transition-colors hover:bg-zinc-800">
                     <Avatar className="h-8 w-8">
@@ -141,6 +144,7 @@ export function Navbar() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              </>
             )}
           </div>
 
